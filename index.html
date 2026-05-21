@@ -20,7 +20,7 @@
 
     <div class="flex flex-col h-screen p-2 md:p-4">
         <header class="flex justify-between items-center border-b border-zinc-800 pb-2 mb-2">
-            <h1 class="text-lg font-black uppercase tracking-tighter">Spine Sampler <span class="text-xs font-normal text-zinc-500">v2.2</span></h1>
+            <h1 class="text-lg font-black uppercase tracking-tighter">Spine Sampler <span class="text-xs font-normal text-zinc-500">v2.3</span></h1>
             <button id="startBtn" class="px-4 py-1 text-sm bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded transition-all">ENGINE INIT</button>
         </header>
 
@@ -58,10 +58,53 @@
         let samples = {};
         let isArmed = { Left: false, Right: false };
 
+        // 척추 애니메이션을 위한 전역 변수 설정
+        let spineCurve = 0; 
+
         async function loadSample(url) {
             const response = await fetch(url);
             const arrayBuffer = await response.arrayBuffer();
             return await audioCtx.decodeAudioData(arrayBuffer);
+        }
+
+        // 중앙에 척추를 그리는 함수 추가
+        function drawSpine() {
+            canvasCtx.beginPath();
+            canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            canvasCtx.lineWidth = 15;
+            
+            let startX = canvasElement.width / 2;
+            let startY = 80;
+            let endX = canvasElement.width / 2;
+            let endY = 640;
+            // spineCurve 값에 따라 제어점(Control Point)이 좌우로 이동하며 곡선을 만듦
+            let controlX = canvasElement.width / 2 + (spineCurve * 250); 
+            let controlY = 360;
+
+            // 중앙 척추 베지어 곡선 그리기
+            canvasCtx.moveTo(startX, startY);
+            canvasCtx.quadraticCurveTo(controlX, controlY, endX, endY);
+            canvasCtx.stroke();
+
+            // 10개의 뼈 마디를 연결해서 그려 강조하기
+            canvasCtx.fillStyle = '#E0E0E0';
+            for(let t = 0; t <= 1; t += 0.1) {
+                // 베지어 곡선 위의 좌표 계산 공식
+                let x = (1-t)*(1-t)*startX + 2*(1-t)*t*controlX + t*t*endX;
+                let y = (1-t)*(1-t)*startY + 2*(1-t)*t*controlY + t*t*endY;
+                
+                canvasCtx.beginPath();
+                canvasCtx.arc(x, y, 12, 0, 2 * Math.PI);
+                canvasCtx.fill();
+                
+                // 마디 테두리 디테일
+                canvasCtx.lineWidth = 3;
+                canvasCtx.strokeStyle = spineCurve < 0 ? '#00F0FF' : (spineCurve > 0 ? '#FF007A' : '#444444');
+                canvasCtx.stroke();
+            }
+            
+            // 서서히 직선(0)으로 탄성 있게 돌아오게 하기 (0.9 곱하기)
+            spineCurve *= 0.9;
         }
 
         function playSound(side) {
@@ -70,6 +113,10 @@
             source.buffer = samples[side];
             source.connect(audioCtx.destination);
             source.start(0);
+
+            // 소리가 날 때 방향에 맞춰 척추 곡선 값 튕겨주기
+            // 왼쪽(Left)일 때는 음수, 오른쪽(Right)일 때는 양수로 크게 튕깁니다.
+            spineCurve = (side === 'Left') ? -1.0 : 1.0;
 
             const pad = document.getElementById(side === 'Left' ? 'leftPad' : 'rightPad');
             pad.style.backgroundColor = side === 'Left' ? '#003344' : '#440022';
@@ -81,6 +128,9 @@
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
             canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+            // 카메라 화면 위에 척추 그래픽을 매 프레임마다 그리기
+            drawSpine();
 
             if (results.multiHandLandmarks && results.multiHandedness) {
                 results.multiHandLandmarks.forEach((landmarks, index) => {
