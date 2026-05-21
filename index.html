@@ -104,7 +104,7 @@
             source.connect(audioCtx.destination);
             source.start(0);
 
-            spineCurve = (side === 'Left') ? -1.0 : 1.0;
+            spineCurve = (side === 'Left') ? 1.0 : -1.0;
 
             const pad = document.getElementById(side === 'Left' ? 'leftPad' : 'rightPad');
             pad.style.backgroundColor = side === 'Left' ? '#003344' : '#440022';
