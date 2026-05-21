@@ -94,12 +94,12 @@
                     const distance = Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y);
 
                     // ★ 변경 포인트: 동작 반전 및 민감도(수치) 최적화
-                    // 1. 손을 적당히 폈을 때 (거리가 0.25 이상 -> 장전!)
-                    if (distance > 0.25) {
+                    // 1. 손을 적당히 폈을 때 (거리가 0.22 이상 -> 장전!)
+                    if (distance > 0.22) {
                         isArmed[side] = true;
                     } 
-                    // 2. 손을 오므렸을 때 (거리가 0.15 이하로 짧아짐 -> 사운드 발사!)
-                    else if (distance < 0.15 && isArmed[side]) {
+                    // 2. 손을 오므렸을 때 (거리가 0.19 이하로 짧아짐 -> 사운드 발사!)
+                    else if (distance < 0.19 && isArmed[side]) {
                         playSound(side);
                         isArmed[side] = false;
                     }
