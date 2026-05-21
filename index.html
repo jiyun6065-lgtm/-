@@ -87,13 +87,13 @@
 
             if (results.multiHandLandmarks && results.multiHandedness) {
                 results.multiHandLandmarks.forEach((landmarks, index) => {
-                    // ★ 좌우 반전 해결 핵심: 카메라 거울 모드에 맞게 MediaPipe의 Left/Right 인식을 반대로 뒤집어줍니다.
+                    // ★ 좌우 반전 해결 핵심: 카메라 거울 모드에 맞춰 Left와 Right 인식을 반대로 뒤집어줍니다. 
                     const rawSide = results.multiHandedness[index].label; 
                     const side = rawSide === 'Left' ? 'Right' : 'Left'; 
 
-                    const indexTip = landmarks[8]; // 검지 손가락 끝
+                    const indexTip = landmarks[8]; // 검지 손가락 끝 
 
-                    // 트리거 로직: 검지가 라인 위로 올라갔다 내려올 때
+                    // 트리거 로직: 검지가 라인 위로 올라갔다 내려올 때 [cite: 135]
                     if (indexTip.y < THRESHOLD) {
                         isArmed[side] = true;
                     } else if (indexTip.y > THRESHOLD + 0.05 && isArmed[side]) {
@@ -101,7 +101,7 @@
                         isArmed[side] = false;
                     }
 
-                    // 손가락 시각화 (화면 색상 피드백도 수정한 방향에 맞게 동기화)
+                    // 손가락 시각화: 이제 올바르게 매칭된 side 변수를 사용하여 화면의 색상도 정상적으로 맞춰집니다.
                     drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#ffffff', lineWidth: 2});
                     drawLandmarks(canvasCtx, landmarks, {color: side === 'Left' ? '#00F0FF' : '#FF007A', lineWidth: 1, radius: 3});
                 });
@@ -147,7 +147,13 @@
                 }
             }
         };
-        
+
+        // 캔버스 크기 조절
+        canvasElement.width = 1280;
+        canvasElement.height = 720;
+    </script>
+</body>
+</html>
         // 캔버스 크기 조절
         canvasElement.width = 1280;
         canvasElement.height = 720;
