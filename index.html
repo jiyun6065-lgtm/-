@@ -65,10 +65,10 @@
             return await audioCtx.decodeAudioData(arrayBuffer);
         }
 
-        function drawSpine() {
+        
+       function drawSpine() {
             canvasCtx.beginPath();
-            canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-            canvasCtx.lineWidth = 15;
+            canvasCtx.lineWidth = 10;
             
             let startX = canvasElement.width / 2;
             let startY = 80;
@@ -77,25 +77,32 @@
             let controlX = canvasElement.width / 2 + (spineCurve * 250); 
             let controlY = 360;
 
+            // 척추 메인 라인
             canvasCtx.moveTo(startX, startY);
             canvasCtx.quadraticCurveTo(controlX, controlY, endX, endY);
+            canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
             canvasCtx.stroke();
 
-            canvasCtx.fillStyle = '#E0E0E0';
-            for(let t = 0; t <= 1; t += 0.1) {
+            // 25개의 촘촘한 마디(가로로 긴 타원) 그리기
+            for(let t = 0; t <= 1; t += 0.04) { // 0.04 간격으로 더 촘촘하게
                 let x = (1-t)*(1-t)*startX + 2*(1-t)*t*controlX + t*t*endX;
                 let y = (1-t)*(1-t)*startY + 2*(1-t)*t*controlY + t*t*endY;
                 
                 canvasCtx.beginPath();
-                canvasCtx.arc(x, y, 12, 0, 2 * Math.PI);
+                // ellipse(x, y, radiusX, radiusY, rotation, startAngle, endAngle)
+                // 가로로 긴 모양(가로 18, 세로 6)
+                canvasCtx.ellipse(x, y, 18, 6, 0, 0, 2 * Math.PI);
+                canvasCtx.fillStyle = '#E0E0E0';
                 canvasCtx.fill();
                 
-                canvasCtx.lineWidth = 3;
+                canvasCtx.lineWidth = 2;
+                // '척'은 Cyan, '추'는 Pink
                 canvasCtx.strokeStyle = spineCurve < -0.1 ? '#00F0FF' : (spineCurve > 0.1 ? '#FF007A' : '#444444');
                 canvasCtx.stroke();
             }
-            spineCurve *= 0.9;
+            spineCurve *= 0.85; 
         }
+
 
         function playSound(side) {
             if (!audioCtx || !samples[side]) return;
