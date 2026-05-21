@@ -20,7 +20,7 @@
 
     <div class="flex flex-col h-screen p-4">
         <header class="flex justify-between items-center border-b border-zinc-800 pb-3 mb-4">
-            <h1 class="text-xl font-black uppercase tracking-tighter">Spine Sampler <span class="text-xs font-normal text-zinc-500">v2.0</span></h1>
+            <h1 class="text-xl font-black uppercase tracking-tighter">Spine Sampler <span class="text-xs font-normal text-zinc-500">v2.1</span></h1>
             <button id="startBtn" class="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded transition-all">ENGINE INIT</button>
         </header>
 
@@ -87,19 +87,19 @@
                     const rawSide = results.multiHandedness[index].label; 
                     const side = rawSide === 'Left' ? 'Right' : 'Left'; 
 
-                    // ★ 변경 포인트: 손목과 중지 끝부분의 거리 계산 (오므림/폄 판별)
                     const wrist = landmarks[0];        // 0번: 손목
                     const middleTip = landmarks[12];   // 12번: 중지 끝
 
-                    // Math.hypot를 이용해 두 점 사이의 유클리디안 거리를 구합니다.
+                    // 두 점 사이의 유클리디안 거리를 구합니다.
                     const distance = Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y);
 
-                    // 손을 오므렸을 때 (주먹 - 거리가 짧아짐)
-                    if (distance < 0.2) {
+                    // ★ 변경 포인트: 동작 반전 및 민감도(수치) 최적화
+                    // 1. 손을 적당히 폈을 때 (거리가 0.25 이상 -> 장전!)
+                    if (distance > 0.25) {
                         isArmed[side] = true;
                     } 
-                    // 손을 쫙 폈을 때 (거리가 길어짐) + 이전에 오므린 상태였을 때만 소리 재생!
-                    else if (distance > 0.35 && isArmed[side]) {
+                    // 2. 손을 오므렸을 때 (거리가 0.15 이하로 짧아짐 -> 사운드 발사!)
+                    else if (distance < 0.15 && isArmed[side]) {
                         playSound(side);
                         isArmed[side] = false;
                     }
