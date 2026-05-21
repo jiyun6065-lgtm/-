@@ -66,7 +66,7 @@
         }
 
         
-       function drawSpine() {
+        function drawSpine() {
             canvasCtx.beginPath();
             canvasCtx.lineWidth = 10;
             
@@ -83,21 +83,21 @@
             canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
             canvasCtx.stroke();
 
-            // 25개의 촘촘한 마디(가로로 긴 타원) 그리기
-            for(let t = 0; t <= 1; t += 0.04) { // 0.04 간격으로 더 촘촘하게
+            // 25개의 촘촘한 마디
+            for(let t = 0; t <= 1; t += 0.04) {
                 let x = (1-t)*(1-t)*startX + 2*(1-t)*t*controlX + t*t*endX;
                 let y = (1-t)*(1-t)*startY + 2*(1-t)*t*controlY + t*t*endY;
                 
                 canvasCtx.beginPath();
-                // ellipse(x, y, radiusX, radiusY, rotation, startAngle, endAngle)
-                // 가로로 긴 모양(가로 18, 세로 6)
                 canvasCtx.ellipse(x, y, 18, 6, 0, 0, 2 * Math.PI);
                 canvasCtx.fillStyle = '#E0E0E0';
                 canvasCtx.fill();
                 
                 canvasCtx.lineWidth = 2;
-                // '척'은 Cyan, '추'는 Pink
-                canvasCtx.strokeStyle = spineCurve < -0.1 ? '#00F0FF' : (spineCurve > 0.1 ? '#FF007A' : '#444444');
+                
+                // [핵심] 여기서 색상 순서를 바꿨습니다: 
+                // 이제 왼쪽으로 휘어질 때(#00F0FF)가 아니라 오른쪽으로 휘어질 때 색상이 적용됩니다.
+                canvasCtx.strokeStyle = spineCurve < -0.1 ? '#FF007A' : (spineCurve > 0.1 ? '#00F0FF' : '#444444');
                 canvasCtx.stroke();
             }
             spineCurve *= 0.85; 
