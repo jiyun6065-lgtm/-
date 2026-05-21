@@ -120,7 +120,7 @@
                     const angle = getAngle(landmarks[9], landmarks[10], landmarks[12]);
 
                     // 각도가 100도보다 작아지면 굽힘으로 간주(트리거)
-                    if (angle < 100) {
+                    if (angle < 140) {
                         if (!isArmed[side]) {
                             playSound(side);
                             isArmed[side] = true;
