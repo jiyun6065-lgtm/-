@@ -87,10 +87,13 @@
 
             if (results.multiHandLandmarks && results.multiHandedness) {
                 results.multiHandLandmarks.forEach((landmarks, index) => {
-                    const side = results.multiHandedness[index].label; // Left or Right
-                    const indexTip = landmarks[8]; // 검지 손가락 끝 [cite: 18]
+                    // ★ 좌우 반전 해결 핵심: 카메라 거울 모드에 맞게 MediaPipe의 Left/Right 인식을 반대로 뒤집어줍니다.
+                    const rawSide = results.multiHandedness[index].label; 
+                    const side = rawSide === 'Left' ? 'Right' : 'Left'; 
 
-                    // 트리거 로직: 검지가 라인 위로 올라갔다 내려올 때 [cite: 16, 17]
+                    const indexTip = landmarks[8]; // 검지 손가락 끝
+
+                    // 트리거 로직: 검지가 라인 위로 올라갔다 내려올 때
                     if (indexTip.y < THRESHOLD) {
                         isArmed[side] = true;
                     } else if (indexTip.y > THRESHOLD + 0.05 && isArmed[side]) {
@@ -98,7 +101,7 @@
                         isArmed[side] = false;
                     }
 
-                    // 손가락 시각화
+                    // 손가락 시각화 (화면 색상 피드백도 수정한 방향에 맞게 동기화)
                     drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#ffffff', lineWidth: 2});
                     drawLandmarks(canvasCtx, landmarks, {color: side === 'Left' ? '#00F0FF' : '#FF007A', lineWidth: 1, radius: 3});
                 });
@@ -131,7 +134,7 @@
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 document.getElementById('statusText').innerText = 'Loading Samples...';
                 try {
-                    // 음원 파일 이름 확인 필수 
+                    // 음원 파일 매칭 유지
                     samples['Left'] = await loadSample('chuck.mp3');
                     samples['Right'] = await loadSample('chu.mp3');
                     document.getElementById('statusText').innerText = 'Engine Active';
@@ -144,7 +147,7 @@
                 }
             }
         };
-
+        
         // 캔버스 크기 조절
         canvasElement.width = 1280;
         canvasElement.height = 720;
