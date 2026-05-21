@@ -20,7 +20,7 @@
 
     <div class="flex flex-col h-screen p-4">
         <header class="flex justify-between items-center border-b border-zinc-800 pb-3 mb-4">
-            <h1 class="text-xl font-black uppercase tracking-tighter">Spine Sampler <span class="text-xs font-normal text-zinc-500">v1.0</span></h1>
+            <h1 class="text-xl font-black uppercase tracking-tighter">Spine Sampler <span class="text-xs font-normal text-zinc-500">v2.0</span></h1>
             <button id="startBtn" class="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded transition-all">ENGINE INIT</button>
         </header>
 
@@ -57,9 +57,7 @@
         let audioCtx = null;
         let samples = {};
         let isArmed = { Left: false, Right: false };
-        const THRESHOLD = 0.3; // 트리거 라인 높이 (상단 30%)
 
-        // 오디오 파일 로드 함수
         async function loadSample(url) {
             const response = await fetch(url);
             const arrayBuffer = await response.arrayBuffer();
@@ -73,7 +71,6 @@
             source.connect(audioCtx.destination);
             source.start(0);
 
-            // 시각 효과
             const pad = document.getElementById(side === 'Left' ? 'leftPad' : 'rightPad');
             pad.style.backgroundColor = side === 'Left' ? '#003344' : '#440022';
             setTimeout(() => pad.style.backgroundColor = '#0F0F0F', 100);
@@ -90,12 +87,19 @@
                     const rawSide = results.multiHandedness[index].label; 
                     const side = rawSide === 'Left' ? 'Right' : 'Left'; 
 
-                    const indexTip = landmarks[8]; // 검지 손가락 끝
+                    // ★ 변경 포인트: 손목과 중지 끝부분의 거리 계산 (오므림/폄 판별)
+                    const wrist = landmarks[0];        // 0번: 손목
+                    const middleTip = landmarks[12];   // 12번: 중지 끝
 
-                    // 트리거 로직: 검지가 라인 위로 올라갔다 내려올 때
-                    if (indexTip.y < THRESHOLD) {
+                    // Math.hypot를 이용해 두 점 사이의 유클리디안 거리를 구합니다.
+                    const distance = Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y);
+
+                    // 손을 오므렸을 때 (주먹 - 거리가 짧아짐)
+                    if (distance < 0.2) {
                         isArmed[side] = true;
-                    } else if (indexTip.y > THRESHOLD + 0.05 && isArmed[side]) {
+                    } 
+                    // 손을 쫙 폈을 때 (거리가 길어짐) + 이전에 오므린 상태였을 때만 소리 재생!
+                    else if (distance > 0.35 && isArmed[side]) {
                         playSound(side);
                         isArmed[side] = false;
                     }
@@ -105,14 +109,6 @@
                     drawLandmarks(canvasCtx, landmarks, {color: side === 'Left' ? '#00F0FF' : '#FF007A', lineWidth: 1, radius: 3});
                 });
             }
-
-            // 기준선 그리기
-            canvasCtx.beginPath();
-            canvasCtx.moveTo(0, canvasElement.height * THRESHOLD);
-            canvasCtx.lineTo(canvasElement.width, canvasElement.height * THRESHOLD);
-            canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-            canvasCtx.setLineDash([5, 5]);
-            canvasCtx.stroke();
             canvasCtx.restore();
         }
 
@@ -146,7 +142,6 @@
             }
         };
 
-        // 캔버스 크기 조절
         canvasElement.width = 1280;
         canvasElement.height = 720;
     </script>
