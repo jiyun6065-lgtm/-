@@ -1,52 +1,191 @@
-// ... (위쪽 코드 생략) ...
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>척추 척척추 샘플러</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
+    <style>
+        body { background-color: #050505; color: #E0E0E0; font-family: monospace; overflow: hidden; }
+        canvas { transform: scaleX(-1); } /* 카메라 좌우 반전 */
+        .status-panel { border: 1px solid #222; background: #0F0F0F; }
+    </style>
+</head>
+<body>
+
+    <div class="flex flex-col h-screen p-2 md:p-4">
+        <header class="flex justify-between items-center border-b border-zinc-800 pb-2 mb-2">
+            <h1 class="text-lg font-black uppercase tracking-tighter">Spine Sampler <span class="text-xs font-normal text-zinc-500">v2.4</span></h1>
+            <button id="startBtn" class="px-4 py-1 text-sm bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded transition-all">ENGINE INIT</button>
+        </header>
+
+        <div class="flex-1 grid grid-cols-8 gap-2 min-h-0">
+            <div id="leftPad" class="col-span-1 status-panel rounded p-2 flex flex-col justify-center items-center transition-all">
+                <span class="text-[9px] text-zinc-500 mb-1 tracking-wider text-center">LEFT</span>
+                <h2 class="text-xl font-black text-cyan-400">CHK</h2>
+            </div>
+
+            <div class="col-span-6 relative bg-black rounded border border-zinc-800 overflow-hidden">
+                <video id="input_video" class="hidden"></video>
+                <canvas id="output_canvas" class="w-full h-full object-cover"></canvas>
+                <div id="loadingOverlay" class="absolute inset-0 flex items-center justify-center bg-black/80 text-cyan-400 font-bold text-sm">카메라 로딩 중...</div>
+            </div>
+
+            <div id="rightPad" class="col-span-1 status-panel rounded p-2 flex flex-col justify-center items-center transition-all">
+                <span class="text-[9px] text-zinc-500 mb-1 tracking-wider text-center">RIGHT</span>
+                <h2 class="text-xl font-black text-pink-500">CHU</h2>
+            </div>
+        </div>
+
+        <footer class="mt-2 text-[10px] text-zinc-600 flex justify-between uppercase font-bold">
+            <span>Status: <span id="statusText" class="text-zinc-400">Standby</span></span>
+            <span>MediaPipe Hands Accelerated</span>
+        </footer>
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('input_video');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        
+        let audioCtx = null;
+        let samples = {};
+        let isArmed = { Left: false, Right: false };
+        let spineCurve = 0; 
+
+        async function loadSample(url) {
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            return await audioCtx.decodeAudioData(arrayBuffer);
+        }
+
+        
+        function drawSpine() {
+            canvasCtx.beginPath();
+            canvasCtx.lineWidth = 10;
+            
+            let startX = canvasElement.width / 2;
+            let startY = 80;
+            let endX = canvasElement.width / 2;
+            let endY = 640;
+            let controlX = canvasElement.width / 2 + (spineCurve * 250); 
+            let controlY = 360;
+
+            // 척추 메인 라인
+            canvasCtx.moveTo(startX, startY);
+            canvasCtx.quadraticCurveTo(controlX, controlY, endX, endY);
+            canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            canvasCtx.stroke();
+
+            // 25개의 촘촘한 마디
+            for(let t = 0; t <= 1; t += 0.04) {
+                let x = (1-t)*(1-t)*startX + 2*(1-t)*t*controlX + t*t*endX;
+                let y = (1-t)*(1-t)*startY + 2*(1-t)*t*controlY + t*t*endY;
+                
+                canvasCtx.beginPath();
+                canvasCtx.ellipse(x, y, 18, 6, 0, 0, 2 * Math.PI);
+                canvasCtx.fillStyle = '#E0E0E0';
+                canvasCtx.fill();
+                
+                canvasCtx.lineWidth = 2;
+                
+                // [핵심] 여기서 색상 순서를 바꿨습니다: 
+                // 이제 왼쪽으로 휘어질 때(#00F0FF)가 아니라 오른쪽으로 휘어질 때 색상이 적용됩니다.
+                canvasCtx.strokeStyle = spineCurve < -0.1 ? '#FF007A' : (spineCurve > 0.1 ? '#00F0FF' : '#444444');
+                canvasCtx.stroke();
+            }
+            spineCurve *= 0.85; 
+        }
+
+
+        function playSound(side) {
+            if (!audioCtx || !samples[side]) return;
+            const source = audioCtx.createBufferSource();
+            source.buffer = samples[side];
+            source.connect(audioCtx.destination);
+            source.start(0);
+
+            spineCurve = (side === 'Left') ? 1.0 : -1.0;
+
+            const pad = document.getElementById(side === 'Left' ? 'leftPad' : 'rightPad');
+            pad.style.backgroundColor = side === 'Left' ? '#003344' : '#440022';
+            setTimeout(() => pad.style.backgroundColor = '#0F0F0F', 100);
+        }
 
         function onResults(results) {
             document.getElementById('loadingOverlay').style.display = 'none';
             
-            // 1. 캔버스 상태 저장
-            canvasCtx.save();
+            // 1. 캔버스 초기화
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
             
-            // 2. 영상 그리기
+            // 2. 카메라 영상 먼저 그리기
             canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-            // 3. 척추 그리기 (함수 내부에서 beginPath 사용하므로 안전)
+            // 3. 척추 그래픽 그리기 (가장 위에 오도록)
             drawSpine();
 
-            // 4. 손 인식 및 디버깅 텍스트
+            // 4. 손 인식 포인트 그리기
             if (results.multiHandLandmarks && results.multiHandedness) {
                 results.multiHandLandmarks.forEach((landmarks, index) => {
-                    const side = results.multiHandedness[index].label === 'Left' ? 'Right' : 'Left';
-                    const angle = getAngle(landmarks[9], landmarks[10], landmarks[12]);
-                    
-                    // 화면에 각도 표시 (디버깅용)
-                    canvasCtx.fillStyle = '#FFD700';
-                    canvasCtx.font = '24px monospace';
-                    canvasCtx.fillText(`Angle: ${Math.round(angle)}`, landmarks[9].x * canvasElement.width, landmarks[9].y * canvasElement.height);
+                    const rawSide = results.multiHandedness[index].label; 
+                    const side = rawSide === 'Left' ? 'Right' : 'Left'; 
 
-                    if (angle < 140) { // 140도 기준
-                        if (!isArmed[side]) {
-                            playSound(side);
-                            isArmed[side] = true;
-                        }
-                    } else {
+                    const wrist = landmarks[0];
+                    const middleTip = landmarks[12];
+                    const distance = Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y);
+
+                    if (distance > 0.22) {
+                        isArmed[side] = true;
+                    } 
+                    else if (distance < 0.19 && isArmed[side]) {
+                        playSound(side);
                         isArmed[side] = false;
                     }
 
                     drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#ffffff', lineWidth: 2});
-                    drawLandmarks(canvasCtx, landmarks, {color: side === 'Left' ? '#FF007A' : '#00F0FF', lineWidth: 1, radius: 3});
+                    drawLandmarks(canvasCtx, landmarks, {color: side === 'Left' ? '#00F0FF' : '#FF007A', lineWidth: 1, radius: 3});
                 });
             }
-            
-            // 5. 상태 복구
-            canvasCtx.restore();
         }
 
-        // drawSpine 함수 내 반복문 간격 조정
-        function drawSpine() {
-            // ... (중략) ...
-            // 기존 0.04를 0.02로 바꿔서 2배 더 촘촘하게!
-            for(let t = 0; t <= 1; t += 0.02) { 
-                // ... (중략) ...
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+        hands.onResults(onResults);
+
+        const camera = new Camera(videoElement, {
+            onFrame: async () => { await hands.send({image: videoElement}); },
+            width: 1280, height: 720
+        });
+
+        startBtn.onclick = async () => {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                document.getElementById('statusText').innerText = 'Loading Samples...';
+                try {
+                    samples['Left'] = await loadSample('chuck.mp3');
+                    samples['Right'] = await loadSample('chu.mp3');
+                    document.getElementById('statusText').innerText = 'Engine Active';
+                    startBtn.innerText = 'RUNNING';
+                    startBtn.style.opacity = '0.5';
+                    camera.start();
+                } catch (e) {
+                    alert('음원 파일을 찾을 수 없습니다.');
+                    console.error(e);
+                }
             }
-        }
+        };
+
+        canvasElement.width = 1280;
+        canvasElement.height = 720;
+    </script>
+</body>
+</html>
